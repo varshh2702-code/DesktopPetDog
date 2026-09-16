@@ -1,0 +1,41 @@
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --yes --no-progress
+
+      - name: Run privacy source check
+        shell: powershell
+        run: .\scripts\verify-privacy.ps1
+
+      - name: Test, publish and create installer
+        shell: powershell
+        run: .\scripts\make-installer.ps1
+
+      - name: Upload downloadable installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: DesktopPetDog-Windows-Installer
+          path: artifacts/DesktopPetDog-Setup.exe
+          if-no-files-found: error
+          retention-days: 30
