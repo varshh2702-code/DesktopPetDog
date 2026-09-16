@@ -23,13 +23,13 @@ public sealed class MainWindow : Window
 
     public MainWindow(AppServices services)
     {
-        _s=services; Title="Desktop Pet Dog"; Width=260; Height=225; AllowsTransparency=true; Background=Brushes.Transparent;
+        _s=services; Title="Desktop Pet Dog"; Width=340; Height=360; AllowsTransparency=true; Background=Brushes.Transparent;
         WindowStyle=WindowStyle.None; ResizeMode=ResizeMode.NoResize; ShowInTaskbar=false; Topmost=_s.Settings.Current.AlwaysOnTop;
-        var root=new Grid(); Content=root;
-        _bubble.Background=new SolidColorBrush(Color.FromArgb(245,255,255,255)); _bubble.BorderBrush=new SolidColorBrush(Color.FromRgb(99,80,70)); _bubble.BorderThickness=new(1.2); _bubble.CornerRadius=new(14); _bubble.Padding=new(12); _bubble.Margin=new(4); _bubble.VerticalAlignment=VerticalAlignment.Top; _bubble.MaxWidth=248; _bubble.Visibility=Visibility.Collapsed; _bubble.Child=_bubbleText;
+        var root=new Grid();root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(135)});root.RowDefinitions.Add(new RowDefinition{Height=new GridLength(225)});Content=root;
+        _bubble.Background=new SolidColorBrush(Color.FromArgb(250,255,255,255)); _bubble.BorderBrush=new SolidColorBrush(Color.FromRgb(99,80,70)); _bubble.BorderThickness=new(1.2); _bubble.CornerRadius=new(14); _bubble.Padding=new(14); _bubble.Margin=new(5); _bubble.VerticalAlignment=VerticalAlignment.Bottom; _bubble.MaxWidth=330; _bubble.MaxHeight=128; _bubble.Visibility=Visibility.Collapsed; _bubble.Child=_bubbleText;
         _bubbleText.TextWrapping=TextWrapping.Wrap; _bubbleText.FontSize=13; _bubbleText.Foreground=Brushes.Black;
         _dog.HorizontalAlignment=HorizontalAlignment.Center; _dog.VerticalAlignment=VerticalAlignment.Bottom; _dog.Margin=new(0,0,0,3);
-        root.Children.Add(_bubble); root.Children.Add(_dog);
+        Grid.SetRow(_bubble,0);Grid.SetRow(_dog,1);Panel.SetZIndex(_bubble,2);root.Children.Add(_bubble);root.Children.Add(_dog);
         _dog.ApplyStyle(_s.Settings.Current.Colour,_s.Settings.Current.Accessory); _dog.LayoutTransform=new ScaleTransform(_s.Settings.Current.Size,_s.Settings.Current.Size);
         Loaded+=OnLoaded; Closing+=OnClosing; MouseLeftButtonDown+=Down; MouseMove+=Move; MouseLeftButtonUp+=Up; MouseRightButtonUp+=(_,e)=>{ BuildPetMenu().IsOpen=true; e.Handled=true; }; Deactivated+=(_,_)=>HideBubble();
         _activity.Interval=TimeSpan.FromSeconds(15); _activity.Tick+=(_,_)=>AmbientAction();
@@ -80,7 +80,7 @@ public sealed class MainWindow : Window
     private void HideBubble()=>_bubble.Visibility=Visibility.Collapsed;
     private void Down(object s,MouseButtonEventArgs e)
     {
-        if (e.ChangedButton!=MouseButton.Left) return; _dragStart=e.GetPosition(this); _dragged=false; CaptureMouse();
+        if (e.ChangedButton!=MouseButton.Left) return; _dog.StopWalking();_dragStart=e.GetPosition(this); _dragged=false; CaptureMouse();
     }
     private void Move(object s,System.Windows.Input.MouseEventArgs e)
     {
@@ -107,7 +107,13 @@ public sealed class MainWindow : Window
     }
     private void MoveGently()
     {
-        var area=GetWorkArea(); var target=Math.Clamp(Left+_random.Next(-90,91),area.Left,area.Right-Width); var a=new DoubleAnimation(target,TimeSpan.FromMilliseconds(900)){EasingFunction=new QuadraticEase()}; BeginAnimation(LeftProperty,a,HandoffBehavior.SnapshotAndReplace);
+        var area=GetWorkArea();Top=area.Bottom-Height;
+        var min=area.Left+8;var max=area.Right-Width-8;var target=min+_random.NextDouble()*Math.Max(1,max-min);
+        if(Math.Abs(target-Left)<120)target=Left<(min+max)/2?Math.Min(max,Left+220):Math.Max(min,Left-220);
+        var toRight=target>Left;var seconds=Math.Clamp(Math.Abs(target-Left)/85.0,1.4,7.0);_dog.StartWalking(toRight);
+        var a=new DoubleAnimation(target,TimeSpan.FromSeconds(seconds));
+        a.Completed+=(_,_)=>{BeginAnimation(LeftProperty,null);Left=target;_dog.StopWalking();SavePosition();};
+        BeginAnimation(LeftProperty,a,HandoffBehavior.SnapshotAndReplace);
     }
     private Rect GetWorkArea()
     {

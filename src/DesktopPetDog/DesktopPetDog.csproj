@@ -17,5 +17,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets\golden-retriever-puppy.png" />
+    <Resource Include="Assets\sleeping-puppy.png" />
+    <Resource Include="Assets\Walk\*.png" />
   </ItemGroup>
 </Project>

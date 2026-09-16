@@ -9,7 +9,7 @@ public sealed class PetSettings
 {
     public string PetName { get; set; } = "Pip";
     public string Colour { get; set; } = "Caramel";
-    public string Accessory { get; set; } = "Collar";
+    public string Accessory { get; set; } = "None";
     public double Size { get; set; } = 1.0;
     public int AnimationFrequency { get; set; } = 2;
     public int MessageFrequency { get; set; } = 1;
