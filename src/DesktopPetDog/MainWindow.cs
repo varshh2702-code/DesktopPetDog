@@ -19,6 +19,7 @@ public sealed class MainWindow : Window
     private readonly Forms.NotifyIcon _tray;
     private PetMode _mode;
     private bool _dragged, _hiddenByFullScreen;
+    private int _movementVersion;
     private Point _dragStart;
 
     public MainWindow(AppServices services)
@@ -34,7 +35,7 @@ public sealed class MainWindow : Window
         Loaded+=OnLoaded; Closing+=OnClosing; MouseLeftButtonDown+=Down; MouseMove+=Move; MouseLeftButtonUp+=Up; MouseRightButtonUp+=(_,e)=>{ BuildPetMenu().IsOpen=true; e.Handled=true; }; Deactivated+=(_,_)=>HideBubble();
         _activity.Interval=TimeSpan.FromSeconds(15); _activity.Tick+=(_,_)=>AmbientAction();
         _blink.Interval=TimeSpan.FromSeconds(4); _blink.Tick+=(_,_)=>_dog.Blink();
-        _fullScreen.Interval=TimeSpan.FromSeconds(2); _fullScreen.Tick+=(_,_)=>CheckFullScreen();
+        _fullScreen.Interval=TimeSpan.FromSeconds(2); _fullScreen.Tick+=(_,_)=>{CheckFullScreen();RecoverIfOffScreen();};
         _tray=BuildTray();
     }
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -80,7 +81,7 @@ public sealed class MainWindow : Window
     private void HideBubble()=>_bubble.Visibility=Visibility.Collapsed;
     private void Down(object s,MouseButtonEventArgs e)
     {
-        if (e.ChangedButton!=MouseButton.Left) return; _dog.StopWalking();_dragStart=e.GetPosition(this); _dragged=false; CaptureMouse();
+        if (e.ChangedButton!=MouseButton.Left) return; _movementVersion++;BeginAnimation(LeftProperty,null);_dog.StopWalking();_dragStart=e.GetPosition(this); _dragged=false; CaptureMouse();
     }
     private void Move(object s,System.Windows.Input.MouseEventArgs e)
     {
@@ -107,13 +108,14 @@ public sealed class MainWindow : Window
     }
     private void MoveGently()
     {
+        var movement=++_movementVersion;
         var area=GetWorkArea();Top=area.Bottom-Height;
-        var min=area.Left+4;var max=area.Right-Width-4;
+        var min=area.Left+24;var max=area.Right-Width-24;
         // Walk almost the full usable monitor width instead of stopping near the middle.
         var target=Left<(min+max)/2?max:min;
         var toRight=target>Left;var seconds=Math.Clamp(Math.Abs(target-Left)/105.0,2.2,16.0);_dog.StartWalking(toRight);
         var a=new DoubleAnimation(target,TimeSpan.FromSeconds(seconds));
-        a.Completed+=(_,_)=>{BeginAnimation(LeftProperty,null);Left=target;_dog.StopWalking();SavePosition();};
+        a.Completed+=(_,_)=>{if(movement!=_movementVersion)return;BeginAnimation(LeftProperty,null);Left=target;_dog.StopWalking();ClampToVisibleArea();SavePosition();};
         BeginAnimation(LeftProperty,a,HandoffBehavior.SnapshotAndReplace);
     }
     private Rect GetWorkArea()
@@ -124,14 +126,24 @@ public sealed class MainWindow : Window
     private void RestorePosition(){var p=_s.Settings.Current;if(double.IsNaN(p.Left)||double.IsNaN(p.Top)){var a=SystemParameters.WorkArea;Left=a.Right-Width-20;Top=a.Bottom-Height-20;}else{Left=p.Left;Top=p.Top;}ClampToVisibleArea();}
     private void SavePosition(){_s.Settings.Current.Left=Left;_s.Settings.Current.Top=Top;_s.Settings.Save();}
     private void ToggleVisible(){if(IsVisible)Hide();else{Show();Activate();ClampToVisibleArea();}}
-    private void SummonPet()
+    public void SummonPet()
     {
         // Cancel any in-progress walk and recover from stale/off-screen saved coordinates.
-        BeginAnimation(LeftProperty,null);BeginAnimation(TopProperty,null);_dog.StopWalking();_hiddenByFullScreen=false;_mode=PetMode.Normal;_activity.Start();
+        _movementVersion++;BeginAnimation(LeftProperty,null);BeginAnimation(TopProperty,null);_dog.StopWalking();_hiddenByFullScreen=false;_mode=PetMode.Normal;_activity.Start();
         var screen=Forms.Screen.FromPoint(Forms.Cursor.Position);var dpi=VisualTreeHelper.GetDpi(this);var w=screen.WorkingArea;
         var area=new Rect(w.Left/dpi.DpiScaleX,w.Top/dpi.DpiScaleY,w.Width/dpi.DpiScaleX,w.Height/dpi.DpiScaleY);
         Left=area.Left+(area.Width-Width)/2;Top=area.Bottom-Height-10;Show();Activate();Topmost=_s.Settings.Current.AlwaysOnTop;ClampToVisibleArea();SavePosition();
         ShowMessage($"Here I am! {_s.Settings.Current.PetName} came back.",3000);
+    }
+    private void RecoverIfOffScreen()
+    {
+        if(!IsVisible||WindowState==WindowState.Minimized)return;
+        var visible=new Rect(SystemParameters.VirtualScreenLeft,SystemParameters.VirtualScreenTop,SystemParameters.VirtualScreenWidth,SystemParameters.VirtualScreenHeight);
+        var pet=new Rect(Left,Top,ActualWidth>0?ActualWidth:Width,ActualHeight>0?ActualHeight:Height);
+        var overlap=Rect.Intersect(visible,pet);
+        if(overlap.Width>=100&&overlap.Height>=100)return;
+        _movementVersion++;BeginAnimation(LeftProperty,null);BeginAnimation(TopProperty,null);_dog.StopWalking();
+        var area=SystemParameters.WorkArea;Left=area.Left+(area.Width-Width)/2;Top=area.Bottom-Height-10;ClampToVisibleArea();SavePosition();
     }
     private void SetMode(PetMode mode)
     {
