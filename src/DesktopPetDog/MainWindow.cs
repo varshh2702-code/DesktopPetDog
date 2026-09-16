@@ -69,7 +69,7 @@ public sealed class MainWindow : Window
         void Add(string text,Action a){var item=new MenuItem{Header=text}; item.Click+=(_,_)=>a(); m.Items.Add(item);}
         Add("Talk to Pet",()=>ShowMessage("What would help: a joke, encouragement, a compliment, or quiet company?"));
         Add("Mood Check-in",MoodCheck); Add("Tell Me a Joke",()=>Message("clean")); Add("Dad Joke",()=>Message("dad")); Add("Encourage Me",()=>Message("motivation")); Add("Give Me a Compliment",()=>Message("compliment"));
-        m.Items.Add(new Separator()); Add("Play",()=>_dog.Animate("jump")); Add("Sit",()=>_dog.Animate("sit")); Add("Sleep",()=>_dog.Animate("sleep"));
+        m.Items.Add(new Separator()); Add("Play",()=>_dog.Play()); Add("Sit",()=>_dog.Sit()); Add("Sleep",()=>_dog.Animate("sleep"));
         m.Items.Add(new Separator()); Add("Focus Mode",()=>SetMode(PetMode.Focus)); Add("Quiet Mode",()=>SetMode(PetMode.Quiet)); Add("Do Not Disturb",()=>SetMode(PetMode.DoNotDisturb)); Add("Pause Pet",()=>SetMode(PetMode.Paused)); Add(_s.Settings.Current.StayHere?"Allow Movement":"Stay Here",()=>{_s.Settings.Current.StayHere=!_s.Settings.Current.StayHere;_s.Settings.Save();});
         Add("Hide Pet",Hide); m.Items.Add(new Separator()); Add("Customise",OpenSettings); Add("Settings",OpenSettings); Add("Exit",ExitApp); return m;
     }
@@ -91,13 +91,13 @@ public sealed class MainWindow : Window
     {
         if (!IsMouseCaptured) return; ReleaseMouseCapture(); ClampToVisibleArea(); SavePosition(); if (!_dragged) { _dog.Wag(); ShowMessage($"{_s.Settings.Current.PetName} gives a happy tail wag!",3500); }
     }
-    protected override void OnMouseDoubleClick(MouseButtonEventArgs e){base.OnMouseDoubleClick(e);_dog.Animate("jump");ShowMessage("Play time!",2500);}
+    protected override void OnMouseDoubleClick(MouseButtonEventArgs e){base.OnMouseDoubleClick(e);_dog.Play();ShowMessage("Play time!",2500);}
     private void AmbientAction()
     {
         if (_mode is PetMode.Paused or PetMode.DoNotDisturb) return;
         if (ShouldAskMood()) { MoodCheck(); return; }
         if (_mode is PetMode.Quiet or PetMode.Focus) { if(_random.Next(3)==0)_dog.Animate("sleep"); return; }
-        var actions=new[]{"wag","stretch","jump","look"}; _dog.Animate(actions[_random.Next(actions.Length)]);
+        var actions=new[]{"wag","play","sit","look"}; _dog.Animate(actions[_random.Next(actions.Length)]);
         if (!_s.Settings.Current.StayHere && _s.Settings.Current.AnimationFrequency>0 && _random.Next(4)<=_s.Settings.Current.AnimationFrequency-1) MoveGently();
     }
     private bool ShouldAskMood()
@@ -110,8 +110,10 @@ public sealed class MainWindow : Window
     {
         var movement=++_movementVersion;
         var area=GetWorkArea();Top=area.Bottom-Height;
-        var min=area.Left+8;var max=area.Right-Width-8;var target=min+_random.NextDouble()*Math.Max(1,max-min);
-        if(Math.Abs(target-Left)<120)target=Left<(min+max)/2?Math.Min(max,Left+220):Math.Max(min,Left-220);
+        var min=area.Left+8;var max=area.Right-Width-8;
+        // Cross nearly the entire usable monitor instead of stopping halfway.
+        // This uses the DPI-adjusted working area, so 1920x1080 and scaled displays stay taskbar-safe.
+        var midpoint=(min+max)/2;var target=Left<=midpoint?max:min;
         var toRight=target>Left;var seconds=Math.Clamp(Math.Abs(target-Left)/85.0,1.4,7.0);_dog.StartWalking(toRight);
         var a=new DoubleAnimation(target,TimeSpan.FromSeconds(seconds));
         a.Completed+=(_,_)=>{if(movement!=_movementVersion)return;BeginAnimation(LeftProperty,null);Left=target;_dog.StopWalking();ClampToVisibleArea();SavePosition();};
