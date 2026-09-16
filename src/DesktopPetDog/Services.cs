@@ -89,7 +89,7 @@ public sealed class HotKeyService : IDisposable
     {
         Unregister(); _handle = new WindowInteropHelper(window).Handle; _source = HwndSource.FromHwnd(_handle); _source.AddHook(Hook);
         var parts = value.Split('+'); uint mods = 0; foreach (var p in parts[..^1]) mods |= p.Trim().ToLowerInvariant() switch { "ctrl" => 2u, "alt" => 1u, "shift" => 4u, "win" => 8u, _ => 0u };
-        var keyText = parts[^1].Trim().ToUpperInvariant(); uint key = keyText.Length == 1 ? keyText[0] : 0x44; RegisterHotKey(_handle, 707, mods | 0x4000, key);
+        var keyText = parts[^1].Trim().ToUpperInvariant(); uint key = keyText.Length == 1 ? (uint)keyText[0] : 0x44u; RegisterHotKey(_handle, 707, mods | 0x4000u, key);
     }
     private IntPtr Hook(IntPtr h, int msg, IntPtr wp, IntPtr lp, ref bool handled) { if (msg == 0x0312 && wp.ToInt32() == 707) { Pressed?.Invoke(); handled = true; } return IntPtr.Zero; }
     public void Unregister() { if (_handle != IntPtr.Zero) UnregisterHotKey(_handle, 707); if (_source != null) _source.RemoveHook(Hook); _source=null; _handle=IntPtr.Zero; }

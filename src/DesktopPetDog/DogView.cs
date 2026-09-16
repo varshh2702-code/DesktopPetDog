@@ -52,8 +52,8 @@ public sealed class DogView : Grid
     {
         BeginAnimation(RenderTransformProperty,null);
         if(action=="jump") { var t=new TranslateTransform();RenderTransform=t;t.BeginAnimation(TranslateTransform.YProperty,new DoubleAnimation(0,-34,TimeSpan.FromMilliseconds(260)){AutoReverse=true,RepeatBehavior=new RepeatBehavior(2)}); }
-        else if(action=="sleep") { var t=new ScaleTransform(1,1);RenderTransform=t;t.BeginAnimation(ScaleTransform.YProperty,new DoubleAnimation(.97,1.02,TimeSpan.FromSeconds(1.7)){AutoReverse=true,RepeatBehavior=RepeatBehavior.Forever}); }
-        else if(action=="stretch") { var t=new ScaleTransform(1,1);RenderTransform=t;t.BeginAnimation(ScaleTransform.XProperty,new DoubleAnimation(.96,1.08,TimeSpan.FromMilliseconds(500)){AutoReverse=true}); }
+        else if(action=="sleep") { var t=new ScaleTransform(1,1);RenderTransform=t;t.BeginAnimation(ScaleTransform.ScaleYProperty,new DoubleAnimation(.97,1.02,TimeSpan.FromSeconds(1.7)){AutoReverse=true,RepeatBehavior=RepeatBehavior.Forever}); }
+        else if(action=="stretch") { var t=new ScaleTransform(1,1);RenderTransform=t;t.BeginAnimation(ScaleTransform.ScaleXProperty,new DoubleAnimation(.96,1.08,TimeSpan.FromMilliseconds(500)){AutoReverse=true}); }
         else { var t=new RotateTransform();RenderTransform=t;t.BeginAnimation(RotateTransform.AngleProperty,new DoubleAnimation(-4,4,TimeSpan.FromMilliseconds(190)){AutoReverse=true,RepeatBehavior=new RepeatBehavior(3)}); }
         if(action!="sleep")Wag();
     }
@@ -66,7 +66,7 @@ public sealed class DogView : Grid
 
     public void Blink()
     {
-        var t=new ScaleTransform(1,1);RenderTransform=t;t.BeginAnimation(ScaleTransform.YProperty,new DoubleAnimation(1,.985,TimeSpan.FromMilliseconds(80)){AutoReverse=true});
+        var t=new ScaleTransform(1,1);RenderTransform=t;t.BeginAnimation(ScaleTransform.ScaleYProperty,new DoubleAnimation(1,.985,TimeSpan.FromMilliseconds(80)){AutoReverse=true});
         _eye1.BeginAnimation(HeightProperty,new DoubleAnimation(12,2,TimeSpan.FromMilliseconds(90)){AutoReverse=true});_eye2.BeginAnimation(HeightProperty,new DoubleAnimation(12,2,TimeSpan.FromMilliseconds(90)){AutoReverse=true});
     }
 }
