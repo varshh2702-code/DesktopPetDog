@@ -59,7 +59,7 @@ public sealed class MainWindow : Window
         var n=new Forms.NotifyIcon{Text="Desktop Pet Dog",Icon=System.Drawing.SystemIcons.Application};
         var m=new Forms.ContextMenuStrip();
         void Add(string text,Action a)=>m.Items.Add(text,null,(_,_)=>Dispatcher.Invoke(a));
-        Add("Pet, Come Here!",SummonPet); Add("Show Pet",SummonPet); Add("Hide Pet",Hide); m.Items.Add(new Forms.ToolStripSeparator());
+        Add("Show Pet",()=>{Show();Activate();ClampToVisibleArea();}); Add("Hide Pet",Hide); m.Items.Add(new Forms.ToolStripSeparator());
         Add("Quiet Mode",()=>SetMode(PetMode.Quiet)); Add("Focus Mode",()=>SetMode(PetMode.Focus)); Add("Pause Pet",()=>SetMode(PetMode.Paused));
         Add("Settings",OpenSettings); m.Items.Add(new Forms.ToolStripSeparator()); Add("Exit",ExitApp); n.ContextMenuStrip=m; n.DoubleClick+=(_,_)=>Dispatcher.Invoke(ToggleVisible); return n;
     }
@@ -67,9 +67,9 @@ public sealed class MainWindow : Window
     {
         var m=new ContextMenu();
         void Add(string text,Action a){var item=new MenuItem{Header=text}; item.Click+=(_,_)=>a(); m.Items.Add(item);}
-        Add("Pet, Come Here!",SummonPet); Add("Talk to Pet",()=>ShowMessage("What would help: a joke, encouragement, a compliment, or quiet company?"));
+        Add("Talk to Pet",()=>ShowMessage("What would help: a joke, encouragement, a compliment, or quiet company?"));
         Add("Mood Check-in",MoodCheck); Add("Tell Me a Joke",()=>Message("clean")); Add("Dad Joke",()=>Message("dad")); Add("Encourage Me",()=>Message("motivation")); Add("Give Me a Compliment",()=>Message("compliment"));
-        m.Items.Add(new Separator()); Add("Pet ♥",()=>{_dog.Pet();ShowMessage($"{_s.Settings.Current.PetName} loves the gentle pats!",2800);}); Add("Play",()=>_dog.Play()); Add("Sit",()=>_dog.Sit()); Add("Sleep",()=>_dog.Animate("sleep"));
+        m.Items.Add(new Separator()); Add("Play",()=>_dog.Animate("jump")); Add("Sit",()=>_dog.Animate("sit")); Add("Sleep",()=>_dog.Animate("sleep"));
         m.Items.Add(new Separator()); Add("Focus Mode",()=>SetMode(PetMode.Focus)); Add("Quiet Mode",()=>SetMode(PetMode.Quiet)); Add("Do Not Disturb",()=>SetMode(PetMode.DoNotDisturb)); Add("Pause Pet",()=>SetMode(PetMode.Paused)); Add(_s.Settings.Current.StayHere?"Allow Movement":"Stay Here",()=>{_s.Settings.Current.StayHere=!_s.Settings.Current.StayHere;_s.Settings.Save();});
         Add("Hide Pet",Hide); m.Items.Add(new Separator()); Add("Customise",OpenSettings); Add("Settings",OpenSettings); Add("Exit",ExitApp); return m;
     }
@@ -91,7 +91,7 @@ public sealed class MainWindow : Window
     {
         if (!IsMouseCaptured) return; ReleaseMouseCapture(); ClampToVisibleArea(); SavePosition(); if (!_dragged) { _dog.Wag(); ShowMessage($"{_s.Settings.Current.PetName} gives a happy tail wag!",3500); }
     }
-    protected override void OnMouseDoubleClick(MouseButtonEventArgs e){base.OnMouseDoubleClick(e);_dog.Play();ShowMessage("Play time!",2500);}
+    protected override void OnMouseDoubleClick(MouseButtonEventArgs e){base.OnMouseDoubleClick(e);_dog.Animate("jump");ShowMessage("Play time!",2500);}
     private void AmbientAction()
     {
         if (_mode is PetMode.Paused or PetMode.DoNotDisturb) return;
@@ -110,10 +110,9 @@ public sealed class MainWindow : Window
     {
         var movement=++_movementVersion;
         var area=GetWorkArea();Top=area.Bottom-Height;
-        var min=area.Left+24;var max=area.Right-Width-24;
-        // Walk almost the full usable monitor width instead of stopping near the middle.
-        var target=Left<(min+max)/2?max:min;
-        var toRight=target>Left;var seconds=Math.Clamp(Math.Abs(target-Left)/105.0,2.2,16.0);_dog.StartWalking(toRight);
+        var min=area.Left+8;var max=area.Right-Width-8;var target=min+_random.NextDouble()*Math.Max(1,max-min);
+        if(Math.Abs(target-Left)<120)target=Left<(min+max)/2?Math.Min(max,Left+220):Math.Max(min,Left-220);
+        var toRight=target>Left;var seconds=Math.Clamp(Math.Abs(target-Left)/85.0,1.4,7.0);_dog.StartWalking(toRight);
         var a=new DoubleAnimation(target,TimeSpan.FromSeconds(seconds));
         a.Completed+=(_,_)=>{if(movement!=_movementVersion)return;BeginAnimation(LeftProperty,null);Left=target;_dog.StopWalking();ClampToVisibleArea();SavePosition();};
         BeginAnimation(LeftProperty,a,HandoffBehavior.SnapshotAndReplace);
