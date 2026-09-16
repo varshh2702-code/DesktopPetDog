@@ -28,10 +28,13 @@ public sealed class DogView : Grid
     public DogView()
     {
         Width = 300; Height = 220; ClipToBounds = true; RenderTransformOrigin = new Point(.5, .82);
-        _sits = CropGrid(Load("Assets/Animations/sit-poses.png"), 3, 2);
-        _plays = CropGrid(Load("Assets/Animations/play-actions.png"), 4, 4);
-        _walks = CropGrid(Load("Assets/Animations/walk-cycle.png"), 8, 1);
-        _sleep = Load("Assets/sleeping-puppy.png");
+        var fallback = Load("Assets/golden-retriever-puppy.png");
+        // Animation assets are optional at runtime. A decoder/resource failure must
+        // never prevent the pet window from opening.
+        _sits = TryGrid("Assets/Animations/sit-poses.png", 3, 2, fallback);
+        _plays = TryGrid("Assets/Animations/play-actions.png", 4, 4, fallback);
+        _walks = TryGrid("Assets/Animations/walk-cycle.png", 8, 1, fallback);
+        _sleep = TryLoad("Assets/sleeping-puppy.png", fallback);
         _current = _sits[0];
         Children.Add(_puppy); Children.Add(_tag); Children.Add(_hearts);
         _timer.Tick += (_, _) => NextFrame();
@@ -40,7 +43,22 @@ public sealed class DogView : Grid
 
     private static BitmapSource Load(string path)
     {
-        var image = new BitmapImage(); image.BeginInit(); image.UriSource = new Uri($"pack://application:,,,/{path}", UriKind.Absolute); image.CacheOption = BitmapCacheOption.OnLoad; image.EndInit(); image.Freeze(); return image;
+        var image = new BitmapImage(); image.BeginInit();
+        image.UriSource = new Uri($"pack://application:,,,/{path}", UriKind.Absolute);
+        image.CacheOption = BitmapCacheOption.OnLoad;
+        image.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+        image.EndInit(); image.Freeze(); return image;
+    }
+
+    private static BitmapSource TryLoad(string path, BitmapSource fallback)
+    {
+        try { return Load(path); } catch (Exception ex) { CrashLog.TryWrite(ex); return fallback; }
+    }
+
+    private static BitmapSource[] TryGrid(string path, int columns, int rows, BitmapSource fallback)
+    {
+        try { return CropGrid(Load(path), columns, rows); }
+        catch (Exception ex) { CrashLog.TryWrite(ex); return Enumerable.Repeat(fallback, columns * rows).ToArray(); }
     }
 
     private static BitmapSource[] CropGrid(BitmapSource sheet, int columns, int rows)
@@ -161,4 +179,3 @@ public sealed class DogView : Grid
         wait.Start();
     }
 }
-

@@ -108,5 +108,5 @@ public sealed class AppServices
 
 public static class CrashLog
 {
-    public static void TryWrite(Exception ex) { try { Directory.CreateDirectory(DataPaths.Root); File.AppendAllText(Path.Combine(DataPaths.Root,"error.log"), $"{DateTime.UtcNow:u} {ex.GetType().Name}: {ex.Message}{Environment.NewLine}"); } catch { } }
+    public static void TryWrite(Exception ex) { try { Directory.CreateDirectory(DataPaths.Root); File.AppendAllText(Path.Combine(DataPaths.Root,"error.log"), $"{DateTime.UtcNow:u}{Environment.NewLine}{ex}{Environment.NewLine}{Environment.NewLine}"); } catch { } }
 }
