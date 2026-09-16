@@ -1,4 +1,7 @@
 using DesktopPetDog;
+using System;
+using System.Linq;
+using Xunit;
 
 namespace DesktopPetDog.Tests;
 
