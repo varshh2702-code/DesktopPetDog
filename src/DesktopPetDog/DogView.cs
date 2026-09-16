@@ -22,10 +22,10 @@ public sealed class DogView : Grid
     public DogView()
     {
         Width=300;Height=220;RenderTransformOrigin=new Point(.5,.82);
-        var sheet=Load("Assets/Cartoon/dog-sprite-sheet.png");
+        var sheet=Load("Assets/Cartoon/dog-sprite-sheet.png");var cellWidth=sheet.PixelWidth/4;var cellHeight=sheet.PixelHeight/4;
         for(var i=0;i<16;i++)
         {
-            var crop=new CroppedBitmap(sheet,new Int32Rect((i%4)*350,(i/4)*280,350,280));crop.Freeze();_original[i]=crop;
+            var crop=new CroppedBitmap(sheet,new Int32Rect((i%4)*cellWidth,(i/4)*cellHeight,cellWidth,cellHeight));crop.Freeze();_original[i]=crop;
         }
         Array.Copy(_original,_frames,16);Children.Add(_puppy);Children.Add(_tag);Children.Add(_hearts);
         _timer.Tick+=(_,_)=>NextFrame();Sit();

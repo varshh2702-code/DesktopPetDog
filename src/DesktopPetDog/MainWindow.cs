@@ -58,7 +58,7 @@ public sealed class MainWindow : Window
         var n=new Forms.NotifyIcon{Text="Desktop Pet Dog",Icon=System.Drawing.SystemIcons.Application};
         var m=new Forms.ContextMenuStrip();
         void Add(string text,Action a)=>m.Items.Add(text,null,(_,_)=>Dispatcher.Invoke(a));
-        Add("Show Pet",()=>{Show();Activate();}); Add("Hide Pet",Hide); m.Items.Add(new Forms.ToolStripSeparator());
+        Add("Pet, Come Here!",SummonPet); Add("Show Pet",SummonPet); Add("Hide Pet",Hide); m.Items.Add(new Forms.ToolStripSeparator());
         Add("Quiet Mode",()=>SetMode(PetMode.Quiet)); Add("Focus Mode",()=>SetMode(PetMode.Focus)); Add("Pause Pet",()=>SetMode(PetMode.Paused));
         Add("Settings",OpenSettings); m.Items.Add(new Forms.ToolStripSeparator()); Add("Exit",ExitApp); n.ContextMenuStrip=m; n.DoubleClick+=(_,_)=>Dispatcher.Invoke(ToggleVisible); return n;
     }
@@ -66,7 +66,7 @@ public sealed class MainWindow : Window
     {
         var m=new ContextMenu();
         void Add(string text,Action a){var item=new MenuItem{Header=text}; item.Click+=(_,_)=>a(); m.Items.Add(item);}
-        Add("Talk to Pet",()=>ShowMessage("What would help: a joke, encouragement, a compliment, or quiet company?"));
+        Add("Pet, Come Here!",SummonPet); Add("Talk to Pet",()=>ShowMessage("What would help: a joke, encouragement, a compliment, or quiet company?"));
         Add("Mood Check-in",MoodCheck); Add("Tell Me a Joke",()=>Message("clean")); Add("Dad Joke",()=>Message("dad")); Add("Encourage Me",()=>Message("motivation")); Add("Give Me a Compliment",()=>Message("compliment"));
         m.Items.Add(new Separator()); Add("Pet ♥",()=>{_dog.Pet();ShowMessage($"{_s.Settings.Current.PetName} loves the gentle pats!",2800);}); Add("Play",()=>_dog.Play()); Add("Sit",()=>_dog.Sit()); Add("Sleep",()=>_dog.Animate("sleep"));
         m.Items.Add(new Separator()); Add("Focus Mode",()=>SetMode(PetMode.Focus)); Add("Quiet Mode",()=>SetMode(PetMode.Quiet)); Add("Do Not Disturb",()=>SetMode(PetMode.DoNotDisturb)); Add("Pause Pet",()=>SetMode(PetMode.Paused)); Add(_s.Settings.Current.StayHere?"Allow Movement":"Stay Here",()=>{_s.Settings.Current.StayHere=!_s.Settings.Current.StayHere;_s.Settings.Save();});
@@ -124,6 +124,15 @@ public sealed class MainWindow : Window
     private void RestorePosition(){var p=_s.Settings.Current;if(double.IsNaN(p.Left)||double.IsNaN(p.Top)){var a=SystemParameters.WorkArea;Left=a.Right-Width-20;Top=a.Bottom-Height-20;}else{Left=p.Left;Top=p.Top;}ClampToVisibleArea();}
     private void SavePosition(){_s.Settings.Current.Left=Left;_s.Settings.Current.Top=Top;_s.Settings.Save();}
     private void ToggleVisible(){if(IsVisible)Hide();else{Show();Activate();ClampToVisibleArea();}}
+    private void SummonPet()
+    {
+        // Cancel any in-progress walk and recover from stale/off-screen saved coordinates.
+        BeginAnimation(LeftProperty,null);BeginAnimation(TopProperty,null);_dog.StopWalking();_hiddenByFullScreen=false;_mode=PetMode.Normal;_activity.Start();
+        var screen=Forms.Screen.FromPoint(Forms.Cursor.Position);var dpi=VisualTreeHelper.GetDpi(this);var w=screen.WorkingArea;
+        var area=new Rect(w.Left/dpi.DpiScaleX,w.Top/dpi.DpiScaleY,w.Width/dpi.DpiScaleX,w.Height/dpi.DpiScaleY);
+        Left=area.Left+(area.Width-Width)/2;Top=area.Bottom-Height-10;Show();Activate();Topmost=_s.Settings.Current.AlwaysOnTop;ClampToVisibleArea();SavePosition();
+        ShowMessage($"Here I am! {_s.Settings.Current.PetName} came back.",3000);
+    }
     private void SetMode(PetMode mode)
     {
         _mode=mode; if(mode==PetMode.Normal){_activity.Start();ShowMessage("Normal mode is back.");}
@@ -135,8 +144,10 @@ public sealed class MainWindow : Window
     private void CheckFullScreen()
     {
         if(!_s.Settings.Current.FullScreenQuiet)return; var full=_s.FullScreen.IsFullScreen();
-        if(full&&!_hiddenByFullScreen){_hiddenByFullScreen=true;if(_s.Settings.Current.HideDuringFullScreen)Hide();else SetMode(PetMode.Quiet);}
-        else if(!full&&_hiddenByFullScreen){_hiddenByFullScreen=false;if(!IsVisible)Show();SetMode(PetMode.Normal);}
+        // Never auto-hide: maximized browsers can resemble full-screen windows.
+        // Full-screen detection may only make the pet quiet; visibility changes are always manual.
+        if(full&&!_hiddenByFullScreen){_hiddenByFullScreen=true;SetMode(PetMode.Quiet);}
+        else if(!full&&_hiddenByFullScreen){_hiddenByFullScreen=false;SetMode(PetMode.Normal);}
         if(_mode==PetMode.Focus&&_s.Settings.Current.FocusEndsAt<=DateTime.Now){SetMode(PetMode.Normal);if(_s.Settings.Current.BreakReminder)ShowMessage("Focus session complete. A short stretch or water break is available.");}
     }
     private void MoodCheck()
