@@ -19,5 +19,6 @@
     <Resource Include="Assets\golden-retriever-puppy.png" />
     <Resource Include="Assets\sleeping-puppy.png" />
     <Resource Include="Assets\Walk\*.png" />
+    <Resource Include="Assets\Frames\**\*.png" />
   </ItemGroup>
 </Project>

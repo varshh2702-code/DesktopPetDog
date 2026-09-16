@@ -69,7 +69,7 @@ public sealed class MainWindow : Window
         void Add(string text,Action a){var item=new MenuItem{Header=text}; item.Click+=(_,_)=>a(); m.Items.Add(item);}
         Add("Talk to Pet",()=>ShowMessage("What would help: a joke, encouragement, a compliment, or quiet company?"));
         Add("Mood Check-in",MoodCheck); Add("Tell Me a Joke",()=>Message("clean")); Add("Dad Joke",()=>Message("dad")); Add("Encourage Me",()=>Message("motivation")); Add("Give Me a Compliment",()=>Message("compliment"));
-        m.Items.Add(new Separator()); Add("Play",()=>_dog.Play()); Add("Sit",()=>_dog.Sit()); Add("Sleep",()=>_dog.Animate("sleep"));
+        m.Items.Add(new Separator()); Add("Pet",()=>{_dog.Pet();ShowMessage("Happy puppy!",2200);}); Add("Play",()=>_dog.Play()); Add("Sit",()=>_dog.Sit()); Add("Sleep",()=>_dog.Animate("sleep"));
         m.Items.Add(new Separator()); Add("Focus Mode",()=>SetMode(PetMode.Focus)); Add("Quiet Mode",()=>SetMode(PetMode.Quiet)); Add("Do Not Disturb",()=>SetMode(PetMode.DoNotDisturb)); Add("Pause Pet",()=>SetMode(PetMode.Paused)); Add(_s.Settings.Current.StayHere?"Allow Movement":"Stay Here",()=>{_s.Settings.Current.StayHere=!_s.Settings.Current.StayHere;_s.Settings.Save();});
         Add("Hide Pet",Hide); m.Items.Add(new Separator()); Add("Customise",OpenSettings); Add("Settings",OpenSettings); Add("Exit",ExitApp); return m;
     }

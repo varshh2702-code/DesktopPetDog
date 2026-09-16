@@ -14,19 +14,24 @@ public sealed class DogView : Grid
     private readonly Canvas _hearts = new() { Width = 300, Height = 220, IsHitTestVisible = false };
     private readonly Border _tag = new() { Width = 18, Height = 18, CornerRadius = new CornerRadius(9), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(74, 112, 0, 0), Visibility = Visibility.Collapsed };
     private readonly BitmapSource _sitting;
+    private readonly BitmapSource[] _sitFrames;
+    private readonly BitmapSource[] _playFrames;
     private readonly BitmapSource _sleeping;
     private readonly BitmapSource[] _walkFrames;
     private readonly DispatcherTimer _frameTimer = new() { Interval = TimeSpan.FromMilliseconds(95) };
-    private int _frame;
+    private int _frame, _sitIndex = -1, _playSequence = -1, _playTicks;
+    private string _mode = "sit";
 
     public DogView()
     {
         Width = 300; Height = 220; ClipToBounds = true; RenderTransformOrigin = new Point(.5, .82);
         _sitting = Load("Assets/golden-retriever-puppy.png");
+        _sitFrames = Enumerable.Range(0, 6).Select(i => TryLoad($"Assets/Frames/Sit/{i:00}.png", _sitting)).ToArray();
+        _playFrames = Enumerable.Range(0, 16).Select(i => TryLoad($"Assets/Frames/Play/{i:00}.png", _sitting)).ToArray();
         _sleeping = TryLoad("Assets/sleeping-puppy.png", _sitting);
-        _walkFrames = Enumerable.Range(0, 8).Select(i => TryLoad($"Assets/Walk/walk-{i}.png", _sitting)).ToArray();
+        _walkFrames = Enumerable.Range(0, 8).Select(i => TryLoad($"Assets/Frames/Walk/{i:00}.png", TryLoad($"Assets/Walk/walk-{i}.png", _sitting))).ToArray();
         _puppy.Source = _sitting; Children.Add(_puppy); Children.Add(_tag); Children.Add(_hearts);
-        _frameTimer.Tick += (_, _) => { _frame = (_frame + 1) % _walkFrames.Length; _puppy.Source = _walkFrames[_frame]; };
+        _frameTimer.Tick += (_, _) => NextFrame();
     }
 
     private static BitmapSource Load(string path)
@@ -54,28 +59,49 @@ public sealed class DogView : Grid
     public void StartWalking(bool toRight)
     {
         ResetTransform(); _puppy.LayoutTransform = new ScaleTransform(toRight ? 1 : -1, 1);
-        _frame = 0; _puppy.Source = _walkFrames[0]; _frameTimer.Start(); _tag.Visibility = Visibility.Collapsed;
+        _mode = "walk"; _frame = 0; _puppy.Source = _walkFrames[0]; _frameTimer.Interval = TimeSpan.FromMilliseconds(95); _frameTimer.Start(); _tag.Visibility = Visibility.Collapsed;
     }
 
     public void StopWalking()
     {
-        _frameTimer.Stop(); _puppy.LayoutTransform = Transform.Identity; _puppy.Source = _sitting; ResetTransform();
+        _frameTimer.Stop(); _puppy.LayoutTransform = Transform.Identity; ResetTransform();
+        _mode = "sit"; _puppy.Source = _sitFrames[Math.Max(0, _sitIndex)];
     }
 
-    public void Sit() => StopWalking();
-    public void Play() => Animate("jump");
+    public void Sit()
+    {
+        _frameTimer.Stop(); _puppy.LayoutTransform = Transform.Identity; ResetTransform(); _mode = "sit";
+        _sitIndex = (_sitIndex + 1) % _sitFrames.Length; _puppy.Source = _sitFrames[_sitIndex];
+    }
+
+    public void Play()
+    {
+        _frameTimer.Stop(); _puppy.LayoutTransform = Transform.Identity; ResetTransform(); _mode = "play";
+        _playSequence = (_playSequence + 1) % 4; _frame = 0; _playTicks = 0;
+        _puppy.Source = _playFrames[_playSequence * 4]; _frameTimer.Interval = TimeSpan.FromMilliseconds(135); _frameTimer.Start();
+    }
+
+    private void NextFrame()
+    {
+        if (_mode == "walk")
+        {
+            _frame = (_frame + 1) % _walkFrames.Length; _puppy.Source = _walkFrames[_frame]; return;
+        }
+        if (_mode == "play")
+        {
+            _playTicks++; _frame = (_frame + 1) % 4; _puppy.Source = _playFrames[_playSequence * 4 + _frame];
+            if (_playTicks >= 15) Sit();
+        }
+    }
 
     public void Animate(string action)
     {
-        _frameTimer.Stop(); _puppy.LayoutTransform = Transform.Identity;
-        _puppy.Source = action == "sleep" ? _sleeping : _sitting;
+        if (action is "jump" or "play") { Play(); return; }
+        if (action == "sit") { Sit(); return; }
+        _frameTimer.Stop(); _puppy.LayoutTransform = Transform.Identity; _mode = action;
+        _puppy.Source = action == "sleep" ? _sleeping : _sitFrames[2];
         ResetTransform();
-        if (action is "jump" or "play")
-        {
-            var move = new TranslateTransform(); RenderTransform = move;
-            move.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, -34, TimeSpan.FromMilliseconds(260)) { AutoReverse = true, RepeatBehavior = new RepeatBehavior(2) });
-        }
-        else if (action == "sleep")
+        if (action == "sleep")
         {
             var breathe = new ScaleTransform(1, 1); RenderTransform = breathe;
             breathe.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(.985, 1.015, TimeSpan.FromSeconds(1.8)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever });
@@ -94,7 +120,7 @@ public sealed class DogView : Grid
 
     public void Pet()
     {
-        _frameTimer.Stop(); _puppy.Source = _sitting; _hearts.Children.Clear();
+        _frameTimer.Stop(); _mode = "pet"; _puppy.Source = _sitFrames[2]; _hearts.Children.Clear();
         var points = new[] { (72d, 70d), (108d, 42d), (146d, 58d), (184d, 42d), (216d, 72d) };
         for (var i = 0; i < points.Length; i++)
         {
@@ -109,4 +135,3 @@ public sealed class DogView : Grid
     public void Wag() => Animate("happy");
     public void Blink() { if (!_frameTimer.IsEnabled) _puppy.BeginAnimation(OpacityProperty, new DoubleAnimation(1, .88, TimeSpan.FromMilliseconds(70)) { AutoReverse = true }); }
 }
-
