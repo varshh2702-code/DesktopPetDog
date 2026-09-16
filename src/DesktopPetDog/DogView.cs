@@ -29,7 +29,7 @@ public sealed class DogView : Grid
         _sitFrames = Enumerable.Range(0, 6).Select(i => TryLoad($"Assets/Frames/Sit/{i:00}.png", _sitting)).ToArray();
         _playFrames = Enumerable.Range(0, 16).Select(i => TryLoad($"Assets/Frames/Play/{i:00}.png", _sitting)).ToArray();
         _sleeping = TryLoad("Assets/sleeping-puppy.png", _sitting);
-        _walkFrames = Enumerable.Range(0, 8).Select(i => TryLoad($"Assets/Frames/Walk/{i:00}.png", TryLoad($"Assets/Walk/walk-{i}.png", _sitting))).ToArray();
+        // Clean earlier walk cycle: no neighbouring half-faces and every tail stays attached.\n        _walkFrames = Enumerable.Range(0, 8).Select(i => TryLoad($"Assets/Walk/walk-{i}.png", _sitting)).ToArray();
         _puppy.Source = _sitting; Children.Add(_puppy); Children.Add(_tag); Children.Add(_hearts);
         _frameTimer.Tick += (_, _) => NextFrame();
     }
