@@ -31,14 +31,14 @@ jobs:
       - name: Verify installer exists
         shell: powershell
         run: |
-          $installer = Get-ChildItem -Path installer -Filter "DesktopPetDog-Setup.exe" -Recurse | Select-Object -First 1
+          $installer = Get-Item "artifacts/DesktopPetDog-Setup.exe" -ErrorAction SilentlyContinue
           if (-not $installer) { throw "Installer was not created." }
           Write-Host "Installer: $($installer.FullName)"
       - name: Upload corrected installer
         uses: actions/upload-artifact@v4
         with:
           name: DesktopPetDog-Corrected-Installer
-          path: installer/Output/DesktopPetDog-Setup.exe
+          path: artifacts/DesktopPetDog-Setup.exe
           if-no-files-found: error
           retention-days: 30
       - name: Publish stable download
@@ -50,4 +50,4 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             gh release create corrected-v1 --title "Desktop Pet Dog - Corrected Installer" --notes "Corrected Windows installer. Automated tests and installer verification completed before publishing."
           }
-          gh release upload corrected-v1 installer/Output/DesktopPetDog-Setup.exe --clobber
+          gh release upload corrected-v1 artifacts/DesktopPetDog-Setup.exe --clobber
