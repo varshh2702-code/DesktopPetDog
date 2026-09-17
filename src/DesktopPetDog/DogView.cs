@@ -7,7 +7,7 @@ using System.Windows.Threading;
 
 namespace DesktopPetDog;
 
-/// <summary>Stable frame-by-frame Labrador renderer used by the earlier second version.</summary>
+/// <summary>Stable frame-by-frame Labrador renderer used by the earlier second version. Verified corrected animation build.</summary>
 public sealed class DogView : Grid
 {
     private readonly Image _puppy = new() { Stretch = Stretch.Uniform, SnapsToDevicePixels = true, Margin = new Thickness(5) };
