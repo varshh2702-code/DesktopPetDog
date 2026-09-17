@@ -1,0 +1,43 @@
+name: Corrected Windows Installer
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore DesktopPetDog.sln
+      - name: Test
+        run: dotnet test DesktopPetDog.sln -c Release --no-restore
+      - name: Publish application
+        run: dotnet publish src/DesktopPetDog/DesktopPetDog.csproj -c Release -r win-x64 --self-contained true -o publish
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --yes --no-progress
+      - name: Build installer
+        shell: powershell
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\DesktopPetDog.iss
+      - name: Verify installer exists
+        shell: powershell
+        run: |
+          $installer = Get-ChildItem -Path installer -Filter "DesktopPetDog-Setup.exe" -Recurse | Select-Object -First 1
+          if (-not $installer) { throw "Installer was not created." }
+          Write-Host "Installer: $($installer.FullName)"
+      - name: Upload corrected installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: DesktopPetDog-Corrected-Installer
+          path: installer/Output/DesktopPetDog-Setup.exe
+          if-no-files-found: error
+          retention-days: 30
