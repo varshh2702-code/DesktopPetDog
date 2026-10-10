@@ -46,8 +46,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view corrected-v1 *> $null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create corrected-v1 --title "Desktop Pet Dog - Corrected Installer" --notes "Corrected Windows installer. Automated tests and installer verification completed before publishing."
+          $existingTags = @(gh release list --json tagName --jq '.[].tagName')
+          if ($LASTEXITCODE -ne 0) { throw "Unable to list releases." }
+          if ($existingTags -contains 'corrected-v1') {
+            gh release upload corrected-v1 artifacts/DesktopPetDog-Setup.exe --clobber
+          } else {
+            gh release create corrected-v1 artifacts/DesktopPetDog-Setup.exe --title "Desktop Pet Dog - Corrected Installer" --notes "Corrected Windows installer. Automated tests and installer verification completed before publishing."
           }
-          gh release upload corrected-v1 artifacts/DesktopPetDog-Setup.exe --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Failed to publish installer release." }
